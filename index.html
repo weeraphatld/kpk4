@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตรวจสอบรายชื่อผู้ผ่านการคัดเลือกน้องค่าย KPK4</title>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- SweetAlert2 CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            background-image: url('https://lh5.googleusercontent.com/d/1RmtUZ48kHEbVgTyM5E45WFyNHDJfFqwK');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            height: 100vh;
+        }
+        .content-wrapper {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <div class="container my-5">
+        <div class="text-center content-wrapper mx-auto" style="max-width: 600px;">
+            <img src="https://lh5.googleusercontent.com/d/1Gs7i1RfVBGyvgLPLHe2SGrMcvyWZlnF0" alt="KPK4 Logo" class="img-fluid mb-4" style="max-width: 150px;">
+            <h1 class="mb-4">ตรวจสอบรายชื่อผู้ผ่านการคัดเลือกน้องค่าย KPK4</h1>
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="studentId" placeholder="กรอกเลขบัตรประจำตัวประชาชน 13 หลัก" required>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary w-100" onclick="checkSelection()">ตรวจสอบ</button>
+                    </div>
+                </div>
+            </div>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('studentId').addEventListener('keydown', function(event) {
+        if (event.key === ' ') {
+            event.preventDefault();
+        }
+    });
+        
+    async function checkSelection() {
+    const studentId = document.getElementById('studentId').value;
+
+    Swal.fire({
+        title: 'กำลังโหลดข้อมูล...',
+        text: 'กรุณารอสักครู่',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const response = await fetch('http://localhost:3000/check-selection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ studentId })
+        });
+
+        const result = await response.json();
+        Swal.close();
+
+        if (result.success) {
+            const found = result.data;
+            const name = found[2];
+            const nickname = found[3];
+            const school = found[6];
+            const province = found[7];
+            const confirmationLink = found[4];
+
+            if (found[5] === "ผ่าน") {
+                Swal.fire({
+                    title: 'ยินดีด้วย คุณผ่านการคัดเลือกให้เป็นน้องค่าย KPK4',
+                    html: `
+                        <p><strong>ชื่อ-นามสกุล:</strong> ${name}</p>
+                        <p><strong>ชื่อเล่น:</strong> ${nickname}</p>
+                        <p><strong>โรงเรียน:</strong> ${school}</p>
+                        <p><strong>จังหวัด:</strong> ${province}</p>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'ยืนยันสิทธิ์ (Google form)',
+                    confirmButtonColor: '#3085d6',
+                    showCloseButton: true,
+                    didOpen: () => {
+                            confetti({
+                                particleCount: 150,
+                                spread: 100,
+                                origin: { y: 0.3 },
+                                zIndex: 9999
+                            });
+                        }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.open(confirmationLink, '_blank');
+                    }
+                });
+            } else if (found[5] === "ไม่ผ่าน") {
+                Swal.fire({
+                    title: 'ขออภัย คุณไม่ผ่านการคัดเลือกน้องค่าย KPK4',
+                    icon: 'error',
+                    confirmButtonText: 'ปิด',
+                    confirmButtonColor: '#d33',
+                    showCloseButton: true
+                });
+            } else if (found[5] === "สำรอง") {
+                Swal.fire({
+                    title: 'สำรองน้องค่าย KPK4',
+                    html: `
+                        <p><strong>ชื่อ-นามสกุล:</strong> ${name}</p>
+                        <p><strong>ชื่อเล่น:</strong> ${nickname}</p>
+                        <p><strong>โรงเรียน:</strong> ${school}</p>
+                        <p><strong>จังหวัด:</strong> ${province}</p>
+                    `,
+                    icon: 'warning',
+                    confirmButtonText: 'ปิด',
+                    confirmButtonColor: '#f39c12',
+                    showCloseButton: true
+                });
+            }
+        } else {
+            Swal.fire({
+                title: result.message,
+                icon: 'warning',
+                confirmButtonText: 'ปิด',
+                confirmButtonColor: '#f39c12',
+                showCloseButton: true
+            });
+        }
+    } catch (error) {
+        Swal.fire({
+            title: 'เกิดข้อผิดพลาด',
+            text: error.message,
+            icon: 'error',
+            confirmButtonText: 'ปิด',
+            confirmButtonColor: '#d33',
+            showCloseButton: true
+        });
+    }
+}
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>  
+
